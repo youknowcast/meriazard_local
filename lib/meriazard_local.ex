@@ -19,4 +19,10 @@ defmodule MeriazardLocal do
 
     DataStore.add_media(%{id: 1, name: "hoo", path: "var"})
   end
+
+  def commands do
+    [
+      all_media: DataStore.get_all_media,
+    ]
+  end
 end
