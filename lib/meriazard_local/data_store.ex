@@ -33,7 +33,7 @@ defmodule MeriazardLocal.DataStore do
     # must use in transaction
     case Mnesia.read({:id_sequences, name}) do
       [] ->
-        Mnesia.write({:id_sequences, name, 1})
+        Mnesia.write({:id_sequences, name, 2})
         1
 
       [{:id_sequences, _name, next_id}] ->
