@@ -2,10 +2,12 @@
 
 import Cocoa
 import SwiftUI
+import Foundation
 
 struct ContentView: View {
     @State private var inputText = "" // ここで@Stateを定義します。
 	    @State private var imagePath: String = ""
+    @State private var message: String? = "" // ここで@Stateを定義します。
     @State private var image: NSImage? = nil
 
     var body: some View {
@@ -15,6 +17,11 @@ struct ContentView: View {
                 Image(nsImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
+            }
+
+            if let message = message {
+               				Text(message)
+					.font(.headline) // フォントスタイルを変更する場合 
             }
 
 			HStack {
@@ -27,10 +34,12 @@ struct ContentView: View {
             // 入力フィールドを追加
             TextField("Enter some text", text: $inputText, onCommit: {
                 // モック関数に入力を送信して、画像のパスを取得します。
-                imagePath = mockSendToElixirBackend(input: inputText)
+                //imagePath = mockSendToElixirBackend(input: inputText)
 
                 // 取得した画像のパスを使用して、画像をロードします。
-                image = NSImage(contentsOfFile: imagePath)
+                //image = NSImage(contentsOfFile: imagePath)
+
+                message = mockSendToElixirBackend2(input: inputText)
                 
                 // 入力をクリアします。
                 inputText = ""
@@ -44,10 +53,72 @@ struct ContentView: View {
     }
 
 	// モック関数：入力を受け取り、画像のパスを返します。
-    func mockSendToElixirBackend(input: String) -> String {
+    func mockSendToElixirBackend2(input: String) -> String {
         // 入力を表示します。
         print("Input Text: \(input)")
 
+    let sockfd = socket(AF_INET, SOCK_STREAM, 0)
+    if sockfd < 0 {
+        print("Error: \(errno), \(strerror(errno))")
+        return ""
+    }
+
+    var server = sockaddr_in()
+    server.sin_family = sa_family_t(AF_INET)
+    server.sin_port = in_port_t(UInt16(32552).bigEndian)
+
+    let serverIp = "127.0.0.1"
+    if inet_pton(AF_INET, serverIp, &server.sin_addr) <= 0 {
+        print("inet_pton error occurred")
+        return ""
+    }
+
+    var serverCopy = server
+    let connectStatus = withUnsafeMutablePointer(to: &serverCopy) {
+        $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+            connect(sockfd, $0, socklen_t(MemoryLayout.size(ofValue: server)))
+        }
+    }
+
+    if connectStatus < 0 {
+        print("Error in connect: \(errno), \(strerror(errno))")
+        return ""
+    }
+
+    let hello = input + "\n" 
+    let helloBytes = hello.utf8
+    let helloBytesCount = helloBytes.count
+    let result = hello.withCString { ptr -> ssize_t in
+        send(sockfd, ptr, helloBytesCount, 0)
+    }
+    if result == -1 {
+        print("Error in send: \(errno), \(strerror(errno))")
+    } else {
+        print("Sent \(result) bytes")
+    }
+
+        // Buffer for the received data.
+    let bufferSize = 1024
+    var buffer = [CChar](repeating: 0, count: bufferSize)
+
+    let bytesRead = recv(sockfd, &buffer, bufferSize - 1, 0)
+    var response = ""
+    if bytesRead > 0 {
+        response = String(cString: buffer)
+        print("Received from server: \(response)")
+    } else if bytesRead < 0 {
+        print("Error in recv: \(errno), \(strerror(errno))")
+    } else {
+        print("Server closed connection")
+    }
+
+        return response
+
+    }
+
+    func mockSendToElixirBackend(input: String) -> String {
+        // 入力を表示します。
+        print("Input Text: \(input)")
         // ここでは、ダミーの画像パスを返します。
         // 実際には、Elixirバックエンドに接続し、結果を取得します。
         return "/path/to/local/image.png"
