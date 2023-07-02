@@ -1,6 +1,12 @@
 # MeriazardLocal
 
-**TODO: Add description**
+## MeriazardLocal.Server testing
+
+its easy to test with using netcat.
+
+```
+% nc -v localhost 32552 -4
+```
 
 ## Installation
 
