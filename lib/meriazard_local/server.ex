@@ -26,7 +26,7 @@ defmodule MeriazardLocal.Server do
     case :gen_tcp.recv(client, 0) do
       {:ok, data} ->
         IO.puts("Received data: #{data}")
-        response = MeriazardLocal.Service.handle_command(String.trim(data))
+        response = MeriazardLocal.Service.process_request(String.trim(data))
         :gen_tcp.send(client, Jason.encode!(response))
         client_loop(client)
 

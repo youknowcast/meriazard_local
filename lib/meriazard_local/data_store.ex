@@ -52,7 +52,7 @@ defmodule MeriazardLocal.DataStore do
         create_or_update_media(media)
 
       _ ->
-        {:error, "id is not specified."}
+        {:error, %{error: "id is not specified."}}
     end
   end
 
@@ -69,16 +69,16 @@ defmodule MeriazardLocal.DataStore do
         Mnesia.write({:media_list, id, media.name, media.path})
       end)
 
-    result
+    {:ok, result}
   end
 
   def delete_media(id) do
-    {:atomic, result} =
+    {:atomic, :ok} =
       Mnesia.transaction(fn ->
         Mnesia.delete({:media_list, id})
       end)
 
-    result
+    :ok
   end
 
   def get_media(id) do
@@ -86,20 +86,23 @@ defmodule MeriazardLocal.DataStore do
       Mnesia.transaction(fn ->
         case Mnesia.read({:media_list, id}) do
           [] -> {:error, "Media not found."}
-          [{:media_list, id, name, path}] -> {:ok, {id, name, path}}
+          [{:media_list, id, name, path}] -> %{id: id, name: name, path: path}
         end
       end)
 
-    result
+    case result do
+      {:error, error} -> {:error, %{error: error}}
+      _ -> {:ok, result}
+    end
   end
 
   def get_all_media do
     {:atomic, result} =
       Mnesia.transaction(fn ->
         Mnesia.match_object({:media_list, :_, :_, :_})
-        |> Enum.map(fn {:media_list, id, name, path} -> {id, name, path} end)
+        |> Enum.map(fn {:media_list, id, name, path} -> %{id: id, name: name, path: path} end)
       end)
 
-    result
+    {:ok, result}
   end
 end

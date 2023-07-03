@@ -3,30 +3,30 @@ defmodule MeriazardLocal.Service do
   This is the Service module for MyApp.
   """
 
-  def handle_command("get_media_list") do
-    media_list = get_media_list()
-    Enum.map(media_list, fn media -> %{id: media.id, name: media.name} end)
-  end
+  alias MeriazardLocal.DataStore
 
-  def handle_command("get_media") do
-    media = get_media()
-    %{id: media.id, name: media.name, path: media.path}
-  end
+  def process_request(request) do
+    case request do
+      "get_media_list" ->
+        result = DataStore.get_all_media()
 
-  def handle_command(_command) do
-    %{error: "Invalid command"}
-  end
+        case result do
+          {:ok, media_list} -> media_list
+          error -> %{error: error}
+        end
 
-  defp get_media_list() do
-    # ここでメディアのリストを取得します。以下は例です。
-    [
-      %{id: 1, name: "Media 1", path: "/path/to/media1"},
-      %{id: 2, name: "Media 2", path: "/path/to/media2"}
-    ]
-  end
+      "get_media" ->
+        # ここではデモ用に ID が 1 のメディアを取得しています。
+        # 実際にはリクエストから ID を解析して適切なメディアを取得する必要があります。
+        result = DataStore.get_media(1)
 
-  defp get_media() do
-    # ここで特定のメディアを取得します。以下は例です。
-    %{id: 1, name: "Media 1", path: "/path/to/media1"}
+        case result do
+          {:ok, media} -> media
+          {:error, error} -> %{error: error}
+        end
+
+      _ ->
+        %{error: "Unknown command"}
+    end
   end
 end
