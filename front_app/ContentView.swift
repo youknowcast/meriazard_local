@@ -61,6 +61,20 @@ struct ContentView: View {
         // 入力を表示します。
         print("Input Text: \(input)")
 
+        let mediaList: [Media] = sendBE(message: input)
+        let names = mediaList.map { $0.name }
+        return names
+    }
+
+    func mockSendToElixirBackend(input: String) -> String {
+        // 入力を表示します。
+        print("Input Text: \(input)")
+        // ここでは、ダミーの画像パスを返します。
+        // 実際には、Elixirバックエンドに接続し、結果を取得します。
+        return "/path/to/local/image.png"
+    }
+
+    func sendBE<T: Decodable>(message: String) -> [T] {
         let sockfd = socket(AF_INET, SOCK_STREAM, 0)
         if sockfd < 0 {
             print("Error: \(errno), \(strerror(errno))")
@@ -89,7 +103,7 @@ struct ContentView: View {
             return []
         }
 
-        let hello = input + "\n"
+        let hello = message + "\n"
         let helloBytes = hello.utf8
         let helloBytesCount = helloBytes.count
         let result = hello.withCString { ptr -> ssize_t in
@@ -121,23 +135,13 @@ struct ContentView: View {
                 return []
             }
             let decoder = JSONDecoder()
-            let mediaList = try decoder.decode([Media].self, from: data)
+            let decoded = try decoder.decode([T].self, from: data)
 
-            // Media オブジェクトの name フィールドを抽出して配列にする
-            let names = mediaList.map { $0.name }
-            return names
+            return decoded
         } catch {
             print("JSON decode error: \(error)")
             return []
         }
-    }
-
-    func mockSendToElixirBackend(input: String) -> String {
-        // 入力を表示します。
-        print("Input Text: \(input)")
-        // ここでは、ダミーの画像パスを返します。
-        // 実際には、Elixirバックエンドに接続し、結果を取得します。
-        return "/path/to/local/image.png"
     }
 }
 

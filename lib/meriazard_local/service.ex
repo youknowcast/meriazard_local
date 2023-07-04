@@ -6,19 +6,16 @@ defmodule MeriazardLocal.Service do
   alias MeriazardLocal.DataStore
 
   def process_request(request) do
-    case request do
-      "get_media_list" ->
-        result = DataStore.get_all_media()
+    [command | params] = String.split(request, ",")
 
-        case result do
-          {:ok, media_list} -> media_list
-          error -> %{error: error}
-        end
+    case command do
+      "get_media_list" ->
+        {:ok, result} = DataStore.get_all_media()
+        result
 
       "get_media" ->
-        # ここではデモ用に ID が 1 のメディアを取得しています。
-        # 実際にはリクエストから ID を解析して適切なメディアを取得する必要があります。
-        result = DataStore.get_media(1)
+        [id | _] = params
+        result = DataStore.get_media(id)
 
         case result do
           {:ok, media} -> media
