@@ -2,6 +2,7 @@
 
 import Cocoa
 import Foundation
+import QuickLook
 import SwiftUI
 
 struct NewMedia: Codable {
@@ -19,6 +20,22 @@ struct Result: Decodable {
     let code: Int
 }
 
+struct Thumbnail: NSViewRepresentable {
+    let url: URL
+    let size: CGFloat
+
+    func makeNSView(context _: Context) -> NSImageView {
+        let view = NSImageView()
+        let thumbnail = QLThumbnailImageCreate(kCFAllocatorDefault, url as CFURL, CGSize(width: size, height: size), nil)
+        if let thumbnail = thumbnail {
+            view.image = NSImage(cgImage: thumbnail.takeUnretainedValue(), size: NSSize.zero)
+        }
+        return view
+    }
+
+    func updateNSView(_: NSImageView, context _: Context) {}
+}
+
 struct ContentView: View {
     @State private var inputText = "" // ここで@Stateを定義します。
     @State private var imagePath: String = ""
@@ -27,7 +44,7 @@ struct ContentView: View {
     @State private var image: NSImage? = nil
 
     @State private var newName: String = ""
-    @State private var newPath: String = ""
+    @State private var selectedFile: URL? = nil
 
     var columns: [GridItem] = Array(repeating: .init(.flexible()), count: 4)
 
@@ -40,23 +57,18 @@ struct ContentView: View {
                     .aspectRatio(contentMode: .fit)
             }
 
-            LazyVGrid(columns: columns, spacing: 20) {
-                ForEach(mediaList) { media in
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("ID: \(media.id)")
-                        Text("Name: \(media.name)")
-                        Text("Path: \(media.path)")
-
-                        Button(action: {
-                            print("Button clicked for media id: \(media.id)")
-                            image = NSImage(contentsOfFile: media.path)
-                        }) {
-                            Text("Action")
-                        }
+            List(mediaList, id: \.id) { media in
+                HStack(alignment: .center, spacing: 10) {
+                    Thumbnail(url: URL(fileURLWithPath: media.path), size: 50)
+                    Text("ID: \(media.id)")
+                    Text("Name: \(media.name)")
+                    Text("Path: \(media.path)")
+                    Button(action: {
+                        print("Button clicked for media id: \(media.id)")
+                        image = NSImage(contentsOfFile: media.path)
+                    }) {
+                        Text("Action")
                     }
-                    .padding()
-                    .cornerRadius(10)
-                    .shadow(color: .gray, radius: 2, x: 0, y: 2)
                 }
             }
 
@@ -75,13 +87,28 @@ struct ContentView: View {
             TextField("ファイル名", text: $newName)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .padding(.bottom)
-            TextField("ファイルパス", text: $newPath)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .padding(.bottom)
+            Button("Select File") {
+                let panel = NSOpenPanel()
+                panel.allowsMultipleSelection = false
+                panel.canChooseDirectories = false
+                if panel.runModal() == .OK {
+                    selectedFile = panel.url
+                }
+            }
+            if let selected = selectedFile {
+                Text("Selected file: \(selected.path)")
+                Button("Clear File") {
+                    selectedFile = nil
+                }
+            } else {
+                Text("No file selected")
+            }
+
             Button(action: {
-                addMedia()
-                newName = ""
-                newPath = ""
+                if let selectedFile = selectedFile {
+                    addMedia(name: newName, path: selectedFile.path)
+                    newName = ""
+                }
             }) {
                 Text("登録")
             }
@@ -89,9 +116,9 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    func addMedia() {
+    func addMedia(name: String, path: String) {
         let command = "add_media,"
-        let newMedia = NewMedia(name: newName, path: newPath)
+        let newMedia = NewMedia(name: name, path: path)
 
         let encoder = JSONEncoder()
         // encoder.outputFormatting = .compact
