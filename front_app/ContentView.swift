@@ -4,10 +4,19 @@ import Cocoa
 import Foundation
 import SwiftUI
 
-struct Media: Decodable, Identifiable {
+struct NewMedia: Codable {
+    let name: String
+    let path: String
+}
+
+struct Media: Codable, Identifiable {
     let id: Int
     let name: String
     let path: String
+}
+
+struct Result: Decodable {
+    let code: Int
 }
 
 struct ContentView: View {
@@ -17,7 +26,10 @@ struct ContentView: View {
     @State private var mediaList: [Media] = [] // ここで@Stateを定義します。
     @State private var image: NSImage? = nil
 
-        var columns: [GridItem] = Array(repeating: .init(.flexible()), count: 4)
+    @State private var newName: String = ""
+    @State private var newPath: String = ""
+
+    var columns: [GridItem] = Array(repeating: .init(.flexible()), count: 4)
 
     var body: some View {
         VStack(spacing: 10) {
@@ -35,9 +47,7 @@ struct ContentView: View {
                         Text("Name: \(media.name)")
                         Text("Path: \(media.path)")
 
-                        // レコードに対する操作を行うボタン
                         Button(action: {
-                            // ボタンがクリックされたときのアクション
                             print("Button clicked for media id: \(media.id)")
                             image = NSImage(contentsOfFile: media.path)
                         }) {
@@ -62,23 +72,41 @@ struct ContentView: View {
                 Text("一覧表示")
             }
 
-            // 入力フィールドを追加
-            TextField("Enter some text", text: $inputText, onCommit: {
-                // モック関数に入力を送信して、画像のパスを取得します。
-                // imagePath = mockSendToElixirBackend(input: inputText)
-
-                // 取得した画像のパスを使用して、画像をロードします。
-                // image = NSImage(contentsOfFile: imagePath)
-
-                mediaList = mockSendToElixirBackend2(input: inputText)
-
-                // 入力をクリアします。
-                inputText = ""
-            })
-            .textFieldStyle(RoundedBorderTextFieldStyle())
-            .padding(.bottom)
+            TextField("ファイル名", text: $newName)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .padding(.bottom)
+            TextField("ファイルパス", text: $newPath)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .padding(.bottom)
+            Button(action: {
+                addMedia()
+                newName = ""
+                newPath = ""
+            }) {
+                Text("登録")
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    func addMedia() {
+        let command = "add_media,"
+        let newMedia = NewMedia(name: newName, path: newPath)
+
+        let encoder = JSONEncoder()
+        // encoder.outputFormatting = .compact
+
+        do {
+            let jsonData = try encoder.encode(newMedia)
+            if var jsonString = String(data: jsonData, encoding: .utf8) {
+                jsonString = jsonString.replacingOccurrences(of: "\n", with: "")
+                jsonString = jsonString.replacingOccurrences(of: " ", with: "")
+                let message = "add_media,\(jsonString)"
+                let response: [Result] = sendBE(message: message)
+            }
+        } catch {
+            print("Error encoding media: \(error)")
+        }
     }
 
     // モック関数：入力を受け取り、画像のパスを返します。
@@ -228,7 +256,7 @@ class AppDelegate<V: View>: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidFinishLaunching(_: Notification) {
         window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 300),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 720),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered, defer: false
         )

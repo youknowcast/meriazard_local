@@ -6,7 +6,7 @@ defmodule MeriazardLocal.Service do
   alias MeriazardLocal.DataStore
 
   def process_request(request) do
-    [command | params] = String.split(request, ",")
+    [command | params] = String.split(request, ",", parts: 2)
 
     case command do
       "get_media_list" ->
@@ -21,6 +21,12 @@ defmodule MeriazardLocal.Service do
           {:ok, media} -> media
           {:error, error} -> %{error: error}
         end
+
+      "add_media" ->
+        [param | _] = params
+        record = Jason.decode!(param, keys: :atoms)
+        {:ok, media} = DataStore.add_media(record)
+        [media]
 
       _ ->
         %{error: "Unknown command"}
