@@ -145,6 +145,17 @@ struct ContentView: View {
                 Button("Clear screenshot") {
                     screenCapture = nil
                 }
+                Button("Save Screenshot") {
+                    guard let screenCapture = screenCapture else {
+                        print("No screen capture to save")
+                        return
+                    }
+
+                    // 保存先のパスを指定（例：ユーザーのDesktop）
+                    let path = NSHomeDirectory().appending("/Desktop/captures")
+
+                    saveScreenCapture(capture: screenCapture, path: path)
+                }
             }
             HStack {
                 Text("ファイル登録")
@@ -172,12 +183,11 @@ struct ContentView: View {
                         Text("No file selected")
                     }
                 }
-            }
-
-            Button("登録") {
-                if let selectedFile = selectedFile {
-                    addMedia(name: newName, path: selectedFile.path)
-                    newName = ""
+                Button("登録") {
+                    if let selectedFile = selectedFile {
+                        addMedia(name: newName, path: selectedFile.path)
+                        newName = ""
+                    }
                 }
             }
         }
@@ -191,6 +201,32 @@ struct ContentView: View {
             return NSImage(cgImage: imageRef, size: NSZeroSize)
         }
         return nil
+    }
+
+    func saveScreenCapture(capture: NSImage, path: String) {
+        // 現在の時刻を元にUUIDを生成
+        let uuid = UUID().uuidString
+        // ファイル名としてUUIDを使用
+        let fileName = "\(uuid).png"
+        // パスとファイル名を結合して完全なファイルパスを生成
+        let fullPath = path.appending("/\(fileName)")
+
+        // NSImageをDataに変換
+        guard let tiffRepresentation = capture.tiffRepresentation,
+              let bitmapImage = NSBitmapImageRep(data: tiffRepresentation),
+              let pngData = bitmapImage.representation(using: .png, properties: [:])
+        else {
+            print("Failed to convert NSImage to Data")
+            return
+        }
+
+        do {
+            // Dataを使用してファイルを書き出し
+            try pngData.write(to: URL(fileURLWithPath: fullPath))
+            print("File saved at: \(fullPath)")
+        } catch {
+            print("Failed to save file: \(error)")
+        }
     }
 
     func addMedia(name: String, path: String) {

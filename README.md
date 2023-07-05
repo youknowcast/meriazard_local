@@ -8,6 +8,10 @@ its easy to test with using netcat.
 % nc -v localhost 32552 -4
 ```
 
+## front_app
+
+0. need to create `captures` directory at Desktop for saving screenshot.
+
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
