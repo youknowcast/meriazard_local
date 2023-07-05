@@ -45,6 +45,7 @@ struct ContentView: View {
     @State private var image: NSImage? = nil
 
     @State private var screenCapture: NSImage? = nil
+    @State private var captured: Bool = false
 
     @State private var newName: String = ""
     @State private var selectedFile: URL? = nil
@@ -151,10 +152,16 @@ struct ContentView: View {
                         return
                     }
 
-                    // 保存先のパスを指定（例：ユーザーのDesktop）
                     let path = NSHomeDirectory().appending("/Desktop/captures")
-
                     saveScreenCapture(capture: screenCapture, path: path)
+
+                    captured = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        captured = false
+                    }
+                }
+                if captured {
+                    Text("saved!")
                 }
             }
             HStack {
