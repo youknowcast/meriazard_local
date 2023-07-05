@@ -1,5 +1,6 @@
 // very thanks to QuickMacApp https://gist.github.com/chriseidhof/26768f0b63fa3cdf8b46821e099df5ff
 
+import AppKit
 import Cocoa
 import Foundation
 import QuickLook
@@ -43,6 +44,8 @@ struct ContentView: View {
     @State private var mediaList: [Media] = [] // ここで@Stateを定義します。
     @State private var image: NSImage? = nil
 
+    @State private var screenCapture: NSImage? = nil
+
     @State private var newName: String = ""
     @State private var selectedFile: URL? = nil
 
@@ -83,60 +86,111 @@ struct ContentView: View {
                     }) {
                         Text("Action")
                     }
-                                    Button(action: {
-                    print("Delete button clicked for media id: \(media.id)")
-                    let command = "delete_media,\(media.id)"
-                    let result: [Result] = sendBE(message: command)
+                    Button(action: {
+                        print("Delete button clicked for media id: \(media.id)")
+                        let command = "delete_media,\(media.id)"
+                        let result: [Result] = sendBE(message: command)
 
-                mediaList = getMediaList()
-                }) {
-                    Text("Delete")
-                }
+                        mediaList = getMediaList()
+                    }) {
+                        Text("Delete")
+                    }
                 }
             }
 
-            HStack {
-                // ヘルプの表示
-                Text("Enter your text below and hit Enter:")
-                    .font(.headline) // フォントスタイルを変更する場合
-                Spacer()
-            }
             Button(action: {
                 mediaList = getMediaList()
             }) {
                 Text("一覧表示")
             }
 
-            TextField("ファイル名", text: $newName)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .padding(.bottom)
-            Button("Select File") {
-                let panel = NSOpenPanel()
-                panel.allowsMultipleSelection = false
-                panel.canChooseDirectories = false
-                if panel.runModal() == .OK {
-                    selectedFile = panel.url
+            HStack {
+                // ヘルプの表示
+                Text("スクリーンショット")
+                    .font(.headline) // フォントスタイルを変更する場合
+                Spacer()
+            }
+            if let capture = screenCapture {
+                Image(nsImage: capture)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            }
+            HStack {
+                Button("全体スクリーンショット") {
+                    let displayId = CGMainDisplayID()
+                    let bounds = CGDisplayBounds(displayId)
+
+                    guard let image = CGWindowListCreateImage(bounds, [.optionOnScreenOnly], kCGNullWindowID, []) else {
+                        return
+                    }
+
+                    screenCapture = NSImage(cgImage: image, size: NSZeroSize)
+                }
+                Button("中央キャプチャ") {
+                    if let screen = NSScreen.main {
+                        let screenWidth = screen.frame.size.width
+                        let screenHeight = screen.frame.size.height
+
+                        let rectSize: CGFloat = 600
+
+                        let rect = CGRect(x: (screenWidth - rectSize) / 2,
+                                          y: (screenHeight - rectSize) / 2,
+                                          width: rectSize,
+                                          height: rectSize)
+                        if let capture = captureRect(rect) {
+                            screenCapture = capture
+                        }
+                    }
+                }
+                Button("Clear screenshot") {
+                    screenCapture = nil
                 }
             }
-            if let selected = selectedFile {
-                Text("Selected file: \(selected.path)")
-                Button("Clear File") {
-                    selectedFile = nil
+            HStack {
+                Text("ファイル登録")
+                Spacer()
+            }
+            VStack {
+                TextField("ファイル名", text: $newName)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+
+                HStack {
+                    Button("Select File") {
+                        let panel = NSOpenPanel()
+                        panel.allowsMultipleSelection = false
+                        panel.canChooseDirectories = false
+                        if panel.runModal() == .OK {
+                            selectedFile = panel.url
+                        }
+                    }
+                    if let selected = selectedFile {
+                        Text("Selected file: \(selected.path)")
+                        Button("Clear File") {
+                            selectedFile = nil
+                        }
+                    } else {
+                        Text("No file selected")
+                    }
                 }
-            } else {
-                Text("No file selected")
             }
 
-            Button(action: {
+            Button("登録") {
                 if let selectedFile = selectedFile {
                     addMedia(name: newName, path: selectedFile.path)
                     newName = ""
                 }
-            }) {
-                Text("登録")
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    func captureRect(_ rect: CGRect) -> NSImage? {
+        let screenRect = NSScreen.main?.frame
+        let screenBounds = CGRect(x: rect.origin.x, y: screenRect!.height - rect.origin.y - rect.height, width: rect.width, height: rect.height)
+        if let imageRef = CGWindowListCreateImage(screenBounds, .optionOnScreenBelowWindow, kCGNullWindowID, [.boundsIgnoreFraming]) {
+            return NSImage(cgImage: imageRef, size: NSZeroSize)
+        }
+        return nil
     }
 
     func addMedia(name: String, path: String) {
@@ -159,8 +213,8 @@ struct ContentView: View {
     }
 
     func getMediaList() -> [Media] {
-                     let response: [Media] = sendBE(message: "get_media_list")
-                     return response
+        let response: [Media] = sendBE(message: "get_media_list")
+        return response
     }
 
     // モック関数：入力を受け取り、画像のパスを返します。

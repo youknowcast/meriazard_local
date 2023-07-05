@@ -42,6 +42,18 @@ defmodule MeriazardLocal.DataStore do
     end
   end
 
+  def current_sequences() do
+    {:atomic, result} =
+      Mnesia.transaction(fn ->
+        Mnesia.match_object({:id_sequences, :_, :_})
+        |> Enum.map(fn {:id_sequences, table_name, next_id} ->
+          %{table_name: table_name, next_id: next_id}
+        end)
+      end)
+
+    result
+  end
+
   def add_media(media) do
     create_or_update_media(media, true)
   end
