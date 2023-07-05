@@ -4,16 +4,20 @@ import Cocoa
 import Foundation
 import SwiftUI
 
-struct Media: Decodable {
+struct Media: Decodable, Identifiable {
     let id: Int
     let name: String
+    let path: String
 }
 
 struct ContentView: View {
     @State private var inputText = "" // ここで@Stateを定義します。
     @State private var imagePath: String = ""
     @State private var message: String? = "" // ここで@Stateを定義します。
+    @State private var mediaList: [Media] = [] // ここで@Stateを定義します。
     @State private var image: NSImage? = nil
+
+        var columns: [GridItem] = Array(repeating: .init(.flexible()), count: 4)
 
     var body: some View {
         VStack(spacing: 10) {
@@ -24,9 +28,26 @@ struct ContentView: View {
                     .aspectRatio(contentMode: .fit)
             }
 
-            if let message = message {
-                Text(message)
-                    .font(.headline) // フォントスタイルを変更する場合
+            LazyVGrid(columns: columns, spacing: 20) {
+                ForEach(mediaList) { media in
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("ID: \(media.id)")
+                        Text("Name: \(media.name)")
+                        Text("Path: \(media.path)")
+
+                        // レコードに対する操作を行うボタン
+                        Button(action: {
+                            // ボタンがクリックされたときのアクション
+                            print("Button clicked for media id: \(media.id)")
+                            image = NSImage(contentsOfFile: media.path)
+                        }) {
+                            Text("Action")
+                        }
+                    }
+                    .padding()
+                    .cornerRadius(10)
+                    .shadow(color: .gray, radius: 2, x: 0, y: 2)
+                }
             }
 
             HStack {
@@ -34,6 +55,11 @@ struct ContentView: View {
                 Text("Enter your text below and hit Enter:")
                     .font(.headline) // フォントスタイルを変更する場合
                 Spacer()
+            }
+            Button(action: {
+                mediaList = mockSendToElixirBackend2(input: "get_media_list")
+            }) {
+                Text("一覧表示")
             }
 
             // 入力フィールドを追加
@@ -44,8 +70,7 @@ struct ContentView: View {
                 // 取得した画像のパスを使用して、画像をロードします。
                 // image = NSImage(contentsOfFile: imagePath)
 
-                let messages = mockSendToElixirBackend2(input: inputText)
-                message = messages.joined(separator: ", ")
+                mediaList = mockSendToElixirBackend2(input: inputText)
 
                 // 入力をクリアします。
                 inputText = ""
@@ -57,13 +82,11 @@ struct ContentView: View {
     }
 
     // モック関数：入力を受け取り、画像のパスを返します。
-    func mockSendToElixirBackend2(input: String) -> [String] {
+    func mockSendToElixirBackend2(input: String) -> [Media] {
         // 入力を表示します。
         print("Input Text: \(input)")
 
-        let mediaList: [Media] = sendBE(message: input)
-        let names = mediaList.map { $0.name }
-        return names
+        return sendBE(message: input)
     }
 
     func mockSendToElixirBackend(input: String) -> String {
