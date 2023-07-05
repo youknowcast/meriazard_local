@@ -28,6 +28,11 @@ defmodule MeriazardLocal.Service do
         {:ok, media} = DataStore.add_media(record)
         [media]
 
+      "delete_media" ->
+        [id | _] = params
+        DataStore.delete_media(String.to_integer(id))
+        %{id: id}
+
       _ ->
         %{error: "Unknown command"}
     end

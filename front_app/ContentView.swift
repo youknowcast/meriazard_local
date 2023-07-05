@@ -65,10 +65,33 @@ struct ContentView: View {
                     Text("Path: \(media.path)")
                     Button(action: {
                         print("Button clicked for media id: \(media.id)")
-                        image = NSImage(contentsOfFile: media.path)
+                        let url = URL(fileURLWithPath: media.path)
+                        if media.path.hasSuffix(".mov") || media.path.hasSuffix(".mp4") {
+                            print("mp4!")
+                            // Open video with QuickTime Player
+                            let quickTimeURL = URL(fileURLWithPath: "/System/Applications/QuickTime Player.app")
+                            let configuration = NSWorkspace.OpenConfiguration()
+                            NSWorkspace.shared.open([url], withApplicationAt: quickTimeURL, configuration: configuration, completionHandler: { _, error in
+                                if let error = error {
+                                    print("Failed to open URL: \(error)")
+                                }
+                            })
+
+                        } else {
+                            image = NSImage(contentsOfFile: media.path)
+                        }
                     }) {
                         Text("Action")
                     }
+                                    Button(action: {
+                    print("Delete button clicked for media id: \(media.id)")
+                    let command = "delete_media,\(media.id)"
+                    let result: [Result] = sendBE(message: command)
+
+                mediaList = getMediaList()
+                }) {
+                    Text("Delete")
+                }
                 }
             }
 
@@ -79,7 +102,7 @@ struct ContentView: View {
                 Spacer()
             }
             Button(action: {
-                mediaList = mockSendToElixirBackend2(input: "get_media_list")
+                mediaList = getMediaList()
             }) {
                 Text("一覧表示")
             }
@@ -127,13 +150,17 @@ struct ContentView: View {
             let jsonData = try encoder.encode(newMedia)
             if var jsonString = String(data: jsonData, encoding: .utf8) {
                 jsonString = jsonString.replacingOccurrences(of: "\n", with: "")
-                jsonString = jsonString.replacingOccurrences(of: " ", with: "")
                 let message = "add_media,\(jsonString)"
                 let response: [Result] = sendBE(message: message)
             }
         } catch {
             print("Error encoding media: \(error)")
         }
+    }
+
+    func getMediaList() -> [Media] {
+                     let response: [Media] = sendBE(message: "get_media_list")
+                     return response
     }
 
     // モック関数：入力を受け取り、画像のパスを返します。
@@ -193,8 +220,8 @@ struct ContentView: View {
             print("Sent \(result) bytes")
         }
 
-        // Buffer for the received data.
-        let bufferSize = 1024
+        // FIXME: localhost 間なのでとりあえず当面ここで詰まらない程度のサイズにする．
+        let bufferSize = 104_857_600
         var buffer = [CChar](repeating: 0, count: bufferSize)
 
         let bytesRead = recv(sockfd, &buffer, bufferSize - 1, 0)
