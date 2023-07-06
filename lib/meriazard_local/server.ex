@@ -1,6 +1,8 @@
 defmodule MeriazardLocal.Server do
   use GenServer
 
+  @max_retries 10
+
   def start_link(port) do
     GenServer.start_link(__MODULE__, port)
   end
@@ -11,9 +13,21 @@ defmodule MeriazardLocal.Server do
     {:ok, %{}}
   end
 
-  def accept_loop(port) do
-    {:ok, socket} = :gen_tcp.listen(port, [:binary, packet: :line, active: false])
-    loop(socket)
+  def accept_loop(port, retries \\ 0) do
+    case :gen_tcp.listen(port, [:binary, packet: :line, active: false]) do
+      {:ok, socket} ->
+        loop(socket)
+
+      {:error, :eaddrinuse} ->
+        if retries < @max_retries do
+          wait_time = :math.pow(2, retries) |> round
+          IO.puts("Address in use, retrying in #{wait_time} second(s)...")
+          :timer.sleep(wait_time * 1000)
+          accept_loop(port, retries + 1)
+        else
+          IO.puts("Failed to bind the address after #{@max_retries} retries")
+        end
+    end
   end
 
   defp loop(socket) do
