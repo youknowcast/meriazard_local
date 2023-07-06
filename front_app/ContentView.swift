@@ -48,6 +48,8 @@ struct Thumbnail: NSViewRepresentable {
     }
 
     func updateNSView(_: NSImageView, context _: Context) {}
+
+    // Thumbnail に onTapGesture を試してみたが動作しないため，こちらの onClick には未対応
 }
 
 struct ContentView: View {
@@ -143,12 +145,16 @@ struct ContentView: View {
                             }
 
                             ForEach(mediaCaptures, id: \.id) { capture in
+                                let nsImage = NSImage(byReferencing: URL(fileURLWithPath: capture.path))
                                 VStack {
-                                    Image(nsImage: NSImage(byReferencingFile: capture.path) ?? NSImage())
+                                    Image(nsImage: nsImage)
                                         .resizable()
                                         .scaledToFit()
                                         .frame(height: 50) // or your preferred height
                                         .padding(.horizontal, 2)
+                                        .onTapGesture {
+                                            image = nsImage
+                                        }
                                     Text(capture.comment)
                                         .font(.footnote)
                                         .multilineTextAlignment(.center)
