@@ -11,9 +11,22 @@ struct NewMedia: Codable {
     let path: String
 }
 
+struct NewMediaCapture: Codable {
+    let media_id: Int
+    let comment: String
+    let path: String
+}
+
 struct Media: Codable, Identifiable {
     let id: Int
     let name: String
+    let path: String
+}
+
+struct MediaCapture: Codable, Identifiable {
+    let id: Int
+    let media_id: Int
+    let comment: String
     let path: String
 }
 
@@ -44,6 +57,9 @@ struct ContentView: View {
     @State private var mediaList: [Media] = [] // ここで@Stateを定義します。
     @State private var image: NSImage? = nil
 
+    @State var mediaShownCaptures: Media?
+    @State var mediaCaptures = [MediaCapture]()
+
     @State private var screenCapture: NSImage? = nil
     @State private var captured: Bool = false
 
@@ -64,14 +80,12 @@ struct ContentView: View {
             List(mediaList, id: \.id) { media in
                 HStack(alignment: .center, spacing: 10) {
                     Thumbnail(url: URL(fileURLWithPath: media.path), size: 50)
-                    Text("ID: \(media.id)")
                     Text("Name: \(media.name)")
                     Text("Path: \(media.path)")
                     Button(action: {
                         print("Button clicked for media id: \(media.id)")
                         let url = URL(fileURLWithPath: media.path)
                         if media.path.hasSuffix(".mov") || media.path.hasSuffix(".mp4") {
-                            print("mp4!")
                             // Open video with QuickTime Player
                             let quickTimeURL = URL(fileURLWithPath: "/System/Applications/QuickTime Player.app")
                             let configuration = NSWorkspace.OpenConfiguration()
@@ -85,7 +99,7 @@ struct ContentView: View {
                             image = NSImage(contentsOfFile: media.path)
                         }
                     }) {
-                        Text("Action")
+                        Text("Show")
                     }
                     Button(action: {
                         print("Delete button clicked for media id: \(media.id)")
@@ -95,6 +109,52 @@ struct ContentView: View {
                         mediaList = getMediaList()
                     }) {
                         Text("Delete")
+                    }
+                    Button("Show Tags") {
+                        mediaCaptures = sendBE(message: "get_media_captures,\(media.id)")
+                        mediaShownCaptures = media
+                    }
+
+                    // screenCapture があるときに tag づけを行うかのボタンを表示する
+                    // tag づけを行う場合，まず，ローカルにファイル保存を行う(saveScreenCapture)
+                    // 次に Elixir 側に保存を行う
+                    // タグづけできたら screenCapture は初期化する．
+                    if screenCapture != nil {
+                        Button("ScreenCapture Tagged") {
+                            guard let capture = screenCapture else {
+                                print("No screen capture to save")
+                                return
+                            }
+                            let path = NSHomeDirectory().appending("/Desktop/captures")
+                            let fullPath = saveScreenCapture(capture: capture, path: path)
+                            addMediaCapture(mediaId: media.id, comment: "foo", path: fullPath)
+
+                            screenCapture = nil
+                        }
+                    }
+                }
+                // mediaCaptures を表示する
+                // 表示条件: 表示対象が設定されており表示対象である(mediaShownCaptures == self.media)
+                if let shownCaptures = mediaShownCaptures, shownCaptures.id == media.id {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack {
+                            Button("x") {
+                                mediaShownCaptures = nil
+                            }
+
+                            ForEach(mediaCaptures, id: \.id) { capture in
+                                VStack {
+                                    Image(nsImage: NSImage(byReferencingFile: capture.path) ?? NSImage())
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(height: 50) // or your preferred height
+                                        .padding(.horizontal, 2)
+                                    Text(capture.comment)
+                                        .font(.footnote)
+                                        .multilineTextAlignment(.center)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -210,7 +270,7 @@ struct ContentView: View {
         return nil
     }
 
-    func saveScreenCapture(capture: NSImage, path: String) {
+    func saveScreenCapture(capture: NSImage, path: String) -> String {
         // 現在の時刻を元にUUIDを生成
         let uuid = UUID().uuidString
         // ファイル名としてUUIDを使用
@@ -224,7 +284,7 @@ struct ContentView: View {
               let pngData = bitmapImage.representation(using: .png, properties: [:])
         else {
             print("Failed to convert NSImage to Data")
-            return
+            return ""
         }
 
         do {
@@ -234,6 +294,7 @@ struct ContentView: View {
         } catch {
             print("Failed to save file: \(error)")
         }
+        return fullPath
     }
 
     func addMedia(name: String, path: String) {
@@ -247,7 +308,26 @@ struct ContentView: View {
             let jsonData = try encoder.encode(newMedia)
             if var jsonString = String(data: jsonData, encoding: .utf8) {
                 jsonString = jsonString.replacingOccurrences(of: "\n", with: "")
-                let message = "add_media,\(jsonString)"
+                let message = "\(command)\(jsonString)"
+                let response: [Result] = sendBE(message: message)
+            }
+        } catch {
+            print("Error encoding media: \(error)")
+        }
+    }
+
+    func addMediaCapture(mediaId: Int, comment: String, path: String) {
+        let command = "add_media_capture,"
+        let newMediaCapture = NewMediaCapture(media_id: mediaId, comment: comment, path: path)
+
+        let encoder = JSONEncoder()
+        // encoder.outputFormatting = .compact
+
+        do {
+            let jsonData = try encoder.encode(newMediaCapture)
+            if var jsonString = String(data: jsonData, encoding: .utf8) {
+                jsonString = jsonString.replacingOccurrences(of: "\n", with: "")
+                let message = "\(command)\(jsonString)"
                 let response: [Result] = sendBE(message: message)
             }
         } catch {

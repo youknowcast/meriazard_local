@@ -33,6 +33,17 @@ defmodule MeriazardLocal.Service do
         DataStore.delete_media(String.to_integer(id))
         %{id: id}
 
+      "add_media_capture" ->
+        [param | _] = params
+        record = Jason.decode!(param, keys: :atoms)
+        {:ok, media_capture} = DataStore.add_media_capture(record)
+        [media_capture]
+
+      "get_media_captures" ->
+        [media_id | _] = params
+        {:ok, result} = DataStore.get_media_captures(String.to_integer(media_id))
+        result
+
       _ ->
         %{error: "Unknown command"}
     end

@@ -19,6 +19,13 @@ defmodule MeriazardLocal.DataStore do
       )
     end
 
+    unless Mnesia.system_info(:tables) |> Enum.member?(:media_captures) do
+      Mnesia.create_table(:media_captures,
+        attributes: [:id, :media_id, :comment, :path],
+        disc_copies: disc_copies()
+      )
+    end
+
     :ok
   end
 
@@ -116,5 +123,32 @@ defmodule MeriazardLocal.DataStore do
       end)
 
     {:ok, result}
+  end
+
+  def add_media_capture(media_capture) do
+    {:atomic, result} =
+      Mnesia.transaction(fn ->
+        Mnesia.write(
+          {:media_captures, next_id(:media_captures), media_capture.media_id,
+           media_capture.comment, media_capture.path}
+        )
+      end)
+
+    {:ok, result}
+  end
+
+  def get_media_captures(media_id) do
+    {:atomic, result} =
+      Mnesia.transaction(fn ->
+        Mnesia.match_object({:media_captures, :_, media_id, :_, :_})
+        |> Enum.map(fn {:media_captures, id, media_id, comment, path} ->
+          %{id: id, media_id: media_id, comment: comment, path: path}
+        end)
+      end)
+
+    case result do
+      {:error, error} -> {:error, %{error: error}}
+      _ -> {:ok, result}
+    end
   end
 end
