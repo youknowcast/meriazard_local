@@ -196,48 +196,58 @@ struct ContentView: View {
                     screenCapture = NSImage(cgImage: image, size: NSZeroSize)
                 }
                 Button("capture area") {
-                    if let screen = NSScreen.main {
-                        let screenWidth = screen.frame.size.width
-                        let screenHeight = screen.frame.size.height
+                    if highlightWindow == nil {
+                        if let screen = NSScreen.main {
+                            let screenWidth = screen.frame.size.width
+                            let screenHeight = screen.frame.size.height
 
-                        let rectSize: CGFloat = 600
-                        let rect = CGRect(x: (screenWidth - rectSize) / 2,
-                                          y: (screenHeight - rectSize) / 2,
-                                          width: rectSize,
-                                          height: rectSize)
-                        if highlightWindow == nil {
+                            let rectSize: CGFloat = 600
+                            let rect = CGRect(x: (screenWidth - rectSize) / 2,
+                                              y: (screenHeight - rectSize) / 2,
+                                              width: rectSize,
+                                              height: rectSize)
                             highlightWindow = HighlightWindow(rect: rect)
                             captureRect = rect
                         }
+                    }
 
-                        if highlightWindow?.isVisible == true {
-                            highlightWindow?.orderOut(nil)
+                    if let highlightWindow = highlightWindow {
+                        if highlightWindow.isVisible {
+                            highlightWindow.orderOut(nil)
+                            captureRect = highlightWindow.frame
                         } else {
-                            highlightWindow?.setFrame(rect, display: true)
-                            highlightWindow?.makeKeyAndOrderFront(nil)
-                            captureRect = rect
+                            if let captureRect = captureRect {
+                                highlightWindow.setFrame(captureRect, display: true)
+                            }
+                            highlightWindow.makeKeyAndOrderFront(nil)
                         }
                     }
                 }
                 Button("中央キャプチャ") {
                     if let screen = NSScreen.main {
-                        let screenWidth = screen.frame.size.width
-                        let screenHeight = screen.frame.size.height
+                        if highlightWindow == nil {
+                            let screenWidth = screen.frame.size.width
+                            let screenHeight = screen.frame.size.height
 
-                        let rectSize: CGFloat = 600
+                            let rectSize: CGFloat = 600
 
-                        let rect = CGRect(x: (screenWidth - rectSize) / 2,
-                                          y: (screenHeight - rectSize) / 2,
-                                          width: rectSize,
-                                          height: rectSize)
+                            let rect = CGRect(x: (screenWidth - rectSize) / 2,
+                                              y: (screenHeight - rectSize) / 2,
+                                              width: rectSize,
+                                              height: rectSize)
+                        } else {
+                            captureRect = highlightWindow?.frame
+                        }
 
                         if let rect = captureRect {
                             if highlightWindow?.isVisible == true {
                                 highlightWindow?.orderOut(nil)
                             }
 
-                            if let capture = captureRectImage(rect) {
-                                screenCapture = capture
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                if let capture = captureRectImage(rect) {
+                                    screenCapture = capture
+                                }
                             }
                         }
                     }
@@ -469,9 +479,9 @@ struct ContentView: View {
 }
 
 class HighlightWindow: NSWindow, ObservableObject {
-        @Published var windowFrame: NSRect
+    @Published var windowFrame: NSRect
     init(rect: CGRect) {
-                windowFrame = rect
+        windowFrame = rect
         super.init(contentRect: rect, styleMask: .titled, backing: .buffered, defer: false)
         backgroundColor = NSColor.red.withAlphaComponent(0.1)
         level = .normal
@@ -480,10 +490,10 @@ class HighlightWindow: NSWindow, ObservableObject {
         NotificationCenter.default.addObserver(self, selector: #selector(windowDidMove(notification:)), name: NSWindow.didMoveNotification, object: self)
     }
 
-        @objc func windowDidMove(notification: NSNotification) {
+    @objc func windowDidMove(notification: NSNotification) {
         if let window = notification.object as? NSWindow {
-            print(window.frame)  // Print new window position. You may want to store it somewhere.
-            self.windowFrame = window.frame
+            print(window.frame) // Print new window position. You may want to store it somewhere.
+            windowFrame = window.frame
         }
     }
 }
