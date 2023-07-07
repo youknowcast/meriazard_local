@@ -64,6 +64,8 @@ struct ContentView: View {
 
     @State private var screenCapture: NSImage? = nil
     @State private var captured: Bool = false
+    @State var highlightWindow: HighlightWindow? = nil
+    @State var captureRect: CGRect? = nil
 
     @State private var newName: String = ""
     @State private var selectedFile: URL? = nil
@@ -193,6 +195,30 @@ struct ContentView: View {
 
                     screenCapture = NSImage(cgImage: image, size: NSZeroSize)
                 }
+                Button("capture area") {
+                    if let screen = NSScreen.main {
+                        let screenWidth = screen.frame.size.width
+                        let screenHeight = screen.frame.size.height
+
+                        let rectSize: CGFloat = 600
+                        let rect = CGRect(x: (screenWidth - rectSize) / 2,
+                                          y: (screenHeight - rectSize) / 2,
+                                          width: rectSize,
+                                          height: rectSize)
+                        if highlightWindow == nil {
+                            highlightWindow = HighlightWindow(rect: rect)
+                            captureRect = rect
+                        }
+
+                        if highlightWindow?.isVisible == true {
+                            highlightWindow?.orderOut(nil)
+                        } else {
+                            highlightWindow?.setFrame(rect, display: true)
+                            highlightWindow?.makeKeyAndOrderFront(nil)
+                            captureRect = rect
+                        }
+                    }
+                }
                 Button("中央キャプチャ") {
                     if let screen = NSScreen.main {
                         let screenWidth = screen.frame.size.width
@@ -204,11 +230,20 @@ struct ContentView: View {
                                           y: (screenHeight - rectSize) / 2,
                                           width: rectSize,
                                           height: rectSize)
-                        if let capture = captureRect(rect) {
-                            screenCapture = capture
+
+                        if let rect = captureRect {
+                            if highlightWindow?.isVisible == true {
+                                highlightWindow?.orderOut(nil)
+                            }
+
+                            if let capture = captureRectImage(rect) {
+                                screenCapture = capture
+                            }
                         }
                     }
+                    captureRect = nil
                 }
+
                 Button("Clear screenshot") {
                     screenCapture = nil
                 }
@@ -267,7 +302,7 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    func captureRect(_ rect: CGRect) -> NSImage? {
+    func captureRectImage(_ rect: CGRect) -> NSImage? {
         let screenRect = NSScreen.main?.frame
         let screenBounds = CGRect(x: rect.origin.x, y: screenRect!.height - rect.origin.y - rect.height, width: rect.width, height: rect.height)
         if let imageRef = CGWindowListCreateImage(screenBounds, .optionOnScreenBelowWindow, kCGNullWindowID, [.boundsIgnoreFraming]) {
@@ -430,6 +465,17 @@ struct ContentView: View {
             print("JSON decode error: \(error)")
             return []
         }
+    }
+}
+
+class HighlightWindow: NSWindow {
+    init(rect: CGRect) {
+        super.init(contentRect: rect, styleMask: .borderless, backing: .buffered, defer: false)
+        backgroundColor = NSColor.red.withAlphaComponent(0.1)
+        level = .floating
+        isOpaque = false
+        hasShadow = false
+        ignoresMouseEvents = true
     }
 }
 
