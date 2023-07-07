@@ -49,32 +49,36 @@ struct Thumbnail: NSViewRepresentable {
 
     func updateNSView(_: NSImageView, context _: Context) {}
 
-    // Thumbnail に onTapGesture を試してみたが動作しないため，こちらの onClick には未対応
+    // Note: Thumbnail に onTapGesture を試してみたが動作しないため，こちらの onClick には未対応
 }
 
 struct ContentView: View {
-    @State private var inputText = "" // ここで@Stateを定義します。
-    @State private var imagePath: String = ""
-    @State private var message: String? = "" // ここで@Stateを定義します。
-    @State private var mediaList: [Media] = [] // ここで@Stateを定義します。
+    // 表示している Media の一覧
+    @State private var mediaList: [Media] = []
+    // 画面表示(大)のイメージ
     @State private var image: NSImage? = nil
 
+    // Grid の行で，画像タグ(MediaCapture)一覧を表示する対象 Media．画像タグ一覧はどれか 1 行のみに表示する仕様で，ここで対象を指定する
     @State var mediaShownCaptures: Media?
+    // Grid の行で表示する画像タグ一覧
     @State var mediaCaptures = [MediaCapture]()
 
+    // スクリーンショットで表示する画像
     @State private var screenCapture: NSImage? = nil
+    // スクリーンショット取得したときに notice するためのフラグ
     @State private var captured: Bool = false
+    // スクリーンショットの範囲を指定するためのウィンドウ
     @State var highlightWindow: HighlightWindow? = nil
+    // スクリーンショットの現在の範囲
     @State var captureRect: CGRect? = nil
 
+    // ファイルアップロードする際の名前
     @State private var newName: String = ""
+    // アップロードファイル
     @State private var selectedFile: URL? = nil
-
-    var columns: [GridItem] = Array(repeating: .init(.flexible()), count: 4)
 
     var body: some View {
         VStack(spacing: 10) {
-            // 画像を表示します。
             if let image = image {
                 Image(nsImage: image)
                     .resizable()
@@ -84,9 +88,8 @@ struct ContentView: View {
             List(mediaList, id: \.id) { media in
                 HStack(alignment: .center, spacing: 10) {
                     Thumbnail(url: URL(fileURLWithPath: media.path), size: 50)
-                    Text("Name: \(media.name)")
-                    Text("Path: \(media.path)")
-                    Button(action: {
+                    Text("\(media.name)")
+                    Button("表示") {
                         print("Button clicked for media id: \(media.id)")
                         let url = URL(fileURLWithPath: media.path)
                         if media.path.hasSuffix(".mov") || media.path.hasSuffix(".mp4") {
@@ -102,19 +105,15 @@ struct ContentView: View {
                         } else {
                             image = NSImage(contentsOfFile: media.path)
                         }
-                    }) {
-                        Text("Show")
                     }
-                    Button(action: {
+                    Button("削除") {
                         print("Delete button clicked for media id: \(media.id)")
                         let command = "delete_media,\(media.id)"
                         let result: [Result] = sendBE(message: command)
 
                         mediaList = getMediaList()
-                    }) {
-                        Text("Delete")
                     }
-                    Button("Show Tags") {
+                    Button("画像タグ") {
                         mediaCaptures = sendBE(message: "get_media_captures,\(media.id)")
                         mediaShownCaptures = media
                     }
@@ -185,7 +184,7 @@ struct ContentView: View {
                     .aspectRatio(contentMode: .fit)
             }
             HStack {
-                Button("全体スクリーンショット") {
+                Button("全体🎦") {
                     let displayId = CGMainDisplayID()
                     let bounds = CGDisplayBounds(displayId)
 
@@ -195,7 +194,7 @@ struct ContentView: View {
 
                     screenCapture = NSImage(cgImage: image, size: NSZeroSize)
                 }
-                Button("capture area") {
+                Button("範囲👈") {
                     if highlightWindow == nil {
                         if let screen = NSScreen.main {
                             let screenWidth = screen.frame.size.width
@@ -223,7 +222,7 @@ struct ContentView: View {
                         }
                     }
                 }
-                Button("中央キャプチャ") {
+                Button("範囲🎦") {
                     if let screen = NSScreen.main {
                         if highlightWindow == nil {
                             let screenWidth = screen.frame.size.width
@@ -231,10 +230,10 @@ struct ContentView: View {
 
                             let rectSize: CGFloat = 600
 
-                            let rect = CGRect(x: (screenWidth - rectSize) / 2,
-                                              y: (screenHeight - rectSize) / 2,
-                                              width: rectSize,
-                                              height: rectSize)
+                            captureRect = CGRect(x: (screenWidth - rectSize) / 2,
+                                                 y: (screenHeight - rectSize) / 2,
+                                                 width: rectSize,
+                                                 height: rectSize)
                         } else {
                             captureRect = highlightWindow?.frame
                         }
@@ -254,10 +253,10 @@ struct ContentView: View {
                     captureRect = nil
                 }
 
-                Button("Clear screenshot") {
+                Button("x") {
                     screenCapture = nil
                 }
-                Button("Save Screenshot") {
+                Button("保存💾") {
                     guard let screenCapture = screenCapture else {
                         print("No screen capture to save")
                         return
@@ -322,14 +321,10 @@ struct ContentView: View {
     }
 
     func saveScreenCapture(capture: NSImage, path: String) -> String {
-        // 現在の時刻を元にUUIDを生成
         let uuid = UUID().uuidString
-        // ファイル名としてUUIDを使用
         let fileName = "\(uuid).png"
-        // パスとファイル名を結合して完全なファイルパスを生成
         let fullPath = path.appending("/\(fileName)")
 
-        // NSImageをDataに変換
         guard let tiffRepresentation = capture.tiffRepresentation,
               let bitmapImage = NSBitmapImageRep(data: tiffRepresentation),
               let pngData = bitmapImage.representation(using: .png, properties: [:])
@@ -339,7 +334,6 @@ struct ContentView: View {
         }
 
         do {
-            // Dataを使用してファイルを書き出し
             try pngData.write(to: URL(fileURLWithPath: fullPath))
             print("File saved at: \(fullPath)")
         } catch {
@@ -353,7 +347,6 @@ struct ContentView: View {
         let newMedia = NewMedia(name: name, path: path)
 
         let encoder = JSONEncoder()
-        // encoder.outputFormatting = .compact
 
         do {
             let jsonData = try encoder.encode(newMedia)
@@ -372,7 +365,6 @@ struct ContentView: View {
         let newMediaCapture = NewMediaCapture(media_id: mediaId, comment: comment, path: path)
 
         let encoder = JSONEncoder()
-        // encoder.outputFormatting = .compact
 
         do {
             let jsonData = try encoder.encode(newMediaCapture)
@@ -389,22 +381,6 @@ struct ContentView: View {
     func getMediaList() -> [Media] {
         let response: [Media] = sendBE(message: "get_media_list")
         return response
-    }
-
-    // モック関数：入力を受け取り、画像のパスを返します。
-    func mockSendToElixirBackend2(input: String) -> [Media] {
-        // 入力を表示します。
-        print("Input Text: \(input)")
-
-        return sendBE(message: input)
-    }
-
-    func mockSendToElixirBackend(input: String) -> String {
-        // 入力を表示します。
-        print("Input Text: \(input)")
-        // ここでは、ダミーの画像パスを返します。
-        // 実際には、Elixirバックエンドに接続し、結果を取得します。
-        return "/path/to/local/image.png"
     }
 
     func sendBE<T: Decodable>(message: String) -> [T] {
@@ -482,17 +458,18 @@ class HighlightWindow: NSWindow, ObservableObject {
     @Published var windowFrame: NSRect
     init(rect: CGRect) {
         windowFrame = rect
-        super.init(contentRect: rect, styleMask: .titled, backing: .buffered, defer: false)
+        super.init(contentRect: rect, styleMask: .borderless, backing: .buffered, defer: false)
         backgroundColor = NSColor.red.withAlphaComponent(0.1)
         level = .normal
         isMovable = true
+        isMovableByWindowBackground = true
         isReleasedWhenClosed = false
         NotificationCenter.default.addObserver(self, selector: #selector(windowDidMove(notification:)), name: NSWindow.didMoveNotification, object: self)
     }
 
     @objc func windowDidMove(notification: NSNotification) {
         if let window = notification.object as? NSWindow {
-            print(window.frame) // Print new window position. You may want to store it somewhere.
+            print(window.frame)
             windowFrame = window.frame
         }
     }
