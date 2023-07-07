@@ -468,14 +468,23 @@ struct ContentView: View {
     }
 }
 
-class HighlightWindow: NSWindow {
+class HighlightWindow: NSWindow, ObservableObject {
+        @Published var windowFrame: NSRect
     init(rect: CGRect) {
-        super.init(contentRect: rect, styleMask: .borderless, backing: .buffered, defer: false)
+                windowFrame = rect
+        super.init(contentRect: rect, styleMask: .titled, backing: .buffered, defer: false)
         backgroundColor = NSColor.red.withAlphaComponent(0.1)
-        level = .floating
-        isOpaque = false
-        hasShadow = false
-        ignoresMouseEvents = true
+        level = .normal
+        isMovable = true
+        isReleasedWhenClosed = false
+        NotificationCenter.default.addObserver(self, selector: #selector(windowDidMove(notification:)), name: NSWindow.didMoveNotification, object: self)
+    }
+
+        @objc func windowDidMove(notification: NSNotification) {
+        if let window = notification.object as? NSWindow {
+            print(window.frame)  // Print new window position. You may want to store it somewhere.
+            self.windowFrame = window.frame
+        }
     }
 }
 
