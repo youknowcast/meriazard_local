@@ -44,6 +44,12 @@ defmodule MeriazardLocal.Service do
         {:ok, result} = DataStore.get_media_captures(String.to_integer(media_id))
         result
 
+      "add_tag" ->
+        [param | _] = params
+        record = Jason.decode!(param, keys: :atoms)
+        {:ok, media} = DataStore.add_media_tag(record)
+        [media]
+
       _ ->
         %{error: "Unknown command"}
     end
