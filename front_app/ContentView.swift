@@ -21,6 +21,12 @@ struct Media: Codable, Identifiable {
     let id: Int
     let name: String
     let path: String
+    let tags: [String]
+}
+
+struct MediaTag: Codable {
+    let media_id: Int
+    let tag: String
 }
 
 struct MediaCapture: Codable, Identifiable {
@@ -87,6 +93,15 @@ struct ContentView: View {
 
             List(mediaList, id: \.id) { media in
                 HStack(alignment: .center, spacing: 10) {
+                    VStack {
+                        Button("+") {
+                            addMediaTag(media_id: media.id, tag: "foo")
+                            mediaList = getMediaList()
+                        }
+                        ForEach(media.tags, id: \.self) { tag in
+                            Text("\(tag)")
+                        }
+                    }
                     Thumbnail(url: URL(fileURLWithPath: media.path), size: 50)
                     Text("\(media.name)")
                     Button("表示") {
@@ -165,6 +180,9 @@ struct ContentView: View {
                     }
                 }
             }
+            .onAppear(perform: {
+                mediaList = getMediaList()
+            })
 
             Button(action: {
                 mediaList = getMediaList()
@@ -350,6 +368,24 @@ struct ContentView: View {
 
         do {
             let jsonData = try encoder.encode(newMedia)
+            if var jsonString = String(data: jsonData, encoding: .utf8) {
+                jsonString = jsonString.replacingOccurrences(of: "\n", with: "")
+                let message = "\(command)\(jsonString)"
+                let response: [Result] = sendBE(message: message)
+            }
+        } catch {
+            print("Error encoding media: \(error)")
+        }
+    }
+
+    func addMediaTag(media_id: Int, tag: String) {
+        let command = "add_media_tag,"
+        let newMediaTag = MediaTag(media_id: media_id, tag: tag)
+
+        let encoder = JSONEncoder()
+
+        do {
+            let jsonData = try encoder.encode(newMediaTag)
             if var jsonString = String(data: jsonData, encoding: .utf8) {
                 jsonString = jsonString.replacingOccurrences(of: "\n", with: "")
                 let message = "\(command)\(jsonString)"

@@ -26,6 +26,13 @@ defmodule MeriazardLocal.DataStore do
       )
     end
 
+    unless Mnesia.system_info(:tables) |> Enum.member?(:media_tags) do
+      Mnesia.create_table(:media_tags,
+        attributes: [:id, :media_id, :tag],
+        disc_copies: disc_copies()
+      )
+    end
+
     :ok
   end
 
@@ -104,8 +111,15 @@ defmodule MeriazardLocal.DataStore do
     {:atomic, result} =
       Mnesia.transaction(fn ->
         case Mnesia.read({:media_list, id}) do
-          [] -> {:error, "Media not found."}
-          [{:media_list, id, name, path}] -> %{id: id, name: name, path: path}
+          [] ->
+            {:error, "Media not found."}
+
+          [{:media_list, id, name, path}] ->
+            tags =
+              Mnesia.match_object({:media_tags, id, :_})
+              |> Enum.map(fn {:media_tags, _, tag} -> tag end)
+
+            %{id: id, name: name, path: path, tags: tags}
         end
       end)
 
@@ -119,10 +133,23 @@ defmodule MeriazardLocal.DataStore do
     {:atomic, result} =
       Mnesia.transaction(fn ->
         Mnesia.match_object({:media_list, :_, :_, :_})
-        |> Enum.map(fn {:media_list, id, name, path} -> %{id: id, name: name, path: path} end)
+        |> Enum.map(fn {:media_list, id, name, path} ->
+          tags = get_tags_for_media(id)
+          %{id: id, name: name, path: path, tags: tags}
+        end)
       end)
 
     {:ok, result}
+  end
+
+  defp get_tags_for_media(media_id) do
+    {:atomic, result} =
+      Mnesia.transaction(fn ->
+        Mnesia.match_object({:media_tags, :_, media_id, :_})
+        |> Enum.map(fn {:media_tags, _, _, tag} -> tag end)
+      end)
+
+    result
   end
 
   def add_media_capture(media_capture) do
@@ -150,5 +177,23 @@ defmodule MeriazardLocal.DataStore do
       {:error, error} -> {:error, %{error: error}}
       _ -> {:ok, result}
     end
+  end
+
+  def add_media_tag(media_tag) do
+    {:atomic, result} =
+      Mnesia.transaction(fn ->
+        case Mnesia.match_object({:media_tags, :_, media_tag.media_id, media_tag.tag}) do
+          [] ->
+            :ok =
+              Mnesia.write({:media_tags, next_id(:media_tags), media_tag.media_id, media_tag.tag})
+
+            %{media_id: media_tag.media_id, tag: media_tag.tag}
+
+          [{:media_tags, _, media_id, tag}] ->
+            %{media_id: media_id, tag: tag}
+        end
+      end)
+
+    {:ok, result}
   end
 end
