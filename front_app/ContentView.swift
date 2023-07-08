@@ -59,6 +59,7 @@ struct Thumbnail: NSViewRepresentable {
 }
 
 struct ContentView: View {
+    @State private var tagName: String = ""
     // 表示している Media の一覧
     @State private var mediaList: [Media] = []
     // 画面表示(大)のイメージ
@@ -91,11 +92,21 @@ struct ContentView: View {
                     .aspectRatio(contentMode: .fit)
             }
 
+            HStack {
+                TextField("新規タグ", text: $tagName)
+                Button("絞り込み") {
+                    if tagName != "" {
+                        mediaList = getMediaListByTag(tag: tagName)
+                    } else {
+                        mediaList = getMediaList()
+                    }
+                }
+            }
             List(mediaList, id: \.id) { media in
                 HStack(alignment: .center, spacing: 10) {
                     VStack {
                         Button("+") {
-                            addMediaTag(media_id: media.id, tag: "foo")
+                            addMediaTag(media_id: media.id, tag: tagName)
                             mediaList = getMediaList()
                         }
                         ForEach(media.tags, id: \.self) { tag in
@@ -416,6 +427,11 @@ struct ContentView: View {
 
     func getMediaList() -> [Media] {
         let response: [Media] = sendBE(message: "get_media_list")
+        return response
+    }
+
+    func getMediaListByTag(tag: String) -> [Media] {
+        let response: [Media] = sendBE(message: "get_media_by_tag,\(tag)")
         return response
     }
 

@@ -22,6 +22,11 @@ defmodule MeriazardLocal.Service do
           {:error, error} -> %{error: error}
         end
 
+      "get_media_by_tag" ->
+        [tag | _] = params
+        {:ok, result} = DataStore.get_media_by_tag(tag)
+        result
+
       "add_media" ->
         [param | _] = params
         record = Jason.decode!(param, keys: :atoms)

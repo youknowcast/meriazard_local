@@ -142,6 +142,22 @@ defmodule MeriazardLocal.DataStore do
     {:ok, result}
   end
 
+  def get_media_by_tag(tag) do
+    {:atomic, result} =
+      Mnesia.transaction(fn ->
+        Mnesia.match_object({:media_tags, :_, :_, tag})
+        |> Enum.map(fn {:media_tags, _, media_id, _} ->
+          Mnesia.match_object({:media_list, media_id, :_, :_})
+          |> Enum.map(fn {:media_list, id, name, path} ->
+            tags = get_tags_for_media(id)
+            %{id: id, name: name, path: path, tags: tags}
+          end)
+        end)
+      end)
+
+    {:ok, List.flatten(result)}
+  end
+
   defp get_tags_for_media(media_id) do
     {:atomic, result} =
       Mnesia.transaction(fn ->
