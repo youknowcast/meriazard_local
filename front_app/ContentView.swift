@@ -106,8 +106,10 @@ struct ContentView: View {
                 HStack(alignment: .center, spacing: 10) {
                     VStack {
                         Button("+") {
-                            addMediaTag(media_id: media.id, tag: tagName)
-                            mediaList = getMediaList()
+                            if tagName != "" {
+                                addMediaTag(media_id: media.id, tag: tagName)
+                                mediaList = getMediaList()
+                            }
                         }
                         ForEach(media.tags, id: \.self) { tag in
                             Text("\(tag)")
