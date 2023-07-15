@@ -440,7 +440,7 @@ struct ContentView: View {
     func sendBE<T: Decodable>(message: String) -> [T] {
         let sockfd = socket(AF_INET, SOCK_STREAM, 0)
         if sockfd < 0 {
-            print("Error: \(errno), \(strerror(errno))")
+            print("Error: \(String(cString: strerror(Int32(errno))))")
             return []
         }
 
@@ -462,7 +462,7 @@ struct ContentView: View {
         }
 
         if connectStatus < 0 {
-            print("Error in connect: \(errno), \(strerror(errno))")
+            print("Error in connect: \(String(cString: strerror(Int32(errno))))")
             return []
         }
 
@@ -473,7 +473,7 @@ struct ContentView: View {
             send(sockfd, ptr, helloBytesCount, 0)
         }
         if result == -1 {
-            print("Error in send: \(errno), \(strerror(errno))")
+            print("Error in send: \(String(cString: strerror(Int32(errno))))")
         } else {
             print("Sent \(result) bytes")
         }
@@ -488,7 +488,7 @@ struct ContentView: View {
             response = String(cString: buffer)
             print("Received from server: \(response)")
         } else if bytesRead < 0 {
-            print("Error in recv: \(errno), \(strerror(errno))")
+            print("Error in recv: \(String(cString: strerror(Int32(errno))))")
         } else {
             print("Server closed connection")
         }
