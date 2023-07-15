@@ -137,7 +137,7 @@ struct ContentView: View {
                     Button("削除") {
                         print("Delete button clicked for media id: \(media.id)")
                         let command = "delete_media,\(media.id)"
-                        let result: [Result] = sendBE(message: command)
+                        let _: [Result] = sendBE(message: command)
 
                         mediaList = getMediaList()
                     }
@@ -294,7 +294,7 @@ struct ContentView: View {
                     }
 
                     let path = NSHomeDirectory().appending("/Desktop/captures")
-                    saveScreenCapture(capture: screenCapture, path: path)
+                    _=saveScreenCapture(capture: screenCapture, path: path)
 
                     captured = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
@@ -384,7 +384,7 @@ struct ContentView: View {
             if var jsonString = String(data: jsonData, encoding: .utf8) {
                 jsonString = jsonString.replacingOccurrences(of: "\n", with: "")
                 let message = "\(command)\(jsonString)"
-                let response: [Result] = sendBE(message: message)
+                let _: [Result] = sendBE(message: message)
             }
         } catch {
             print("Error encoding media: \(error)")
@@ -402,7 +402,7 @@ struct ContentView: View {
             if var jsonString = String(data: jsonData, encoding: .utf8) {
                 jsonString = jsonString.replacingOccurrences(of: "\n", with: "")
                 let message = "\(command)\(jsonString)"
-                let response: [Result] = sendBE(message: message)
+                let _: [Result] = sendBE(message: message)
             }
         } catch {
             print("Error encoding media: \(error)")
@@ -420,7 +420,7 @@ struct ContentView: View {
             if var jsonString = String(data: jsonData, encoding: .utf8) {
                 jsonString = jsonString.replacingOccurrences(of: "\n", with: "")
                 let message = "\(command)\(jsonString)"
-                let response: [Result] = sendBE(message: message)
+                let _: [Result] = sendBE(message: message)
             }
         } catch {
             print("Error encoding media: \(error)")
