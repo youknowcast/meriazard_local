@@ -134,6 +134,15 @@ struct ContentView: View {
                             image = NSImage(contentsOfFile: media.path)
                         }
                     }
+                    Button("コピー") {
+                        if let image = NSImage(byReferencingFile: media.path) {
+                            let pasteboard = NSPasteboard.general
+                            pasteboard.clearContents()
+                            pasteboard.writeObjects([image])
+                        } else {
+                            print("Failed to load image")
+                        }
+                    }
                     Button("削除") {
                         print("Delete button clicked for media id: \(media.id)")
                         let command = "delete_media,\(media.id)"
@@ -294,7 +303,7 @@ struct ContentView: View {
                     }
 
                     let path = NSHomeDirectory().appending("/Desktop/captures")
-                    _=saveScreenCapture(capture: screenCapture, path: path)
+                    _ = saveScreenCapture(capture: screenCapture, path: path)
 
                     captured = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
