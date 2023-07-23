@@ -135,13 +135,15 @@ struct ContentView: View {
                         }
                     }
                     Button("コピー") {
-                        if let image = NSImage(byReferencingFile: media.path) {
-                            let pasteboard = NSPasteboard.general
-                            pasteboard.clearContents()
-                            pasteboard.writeObjects([image])
-                        } else {
-                            print("Failed to load image")
+                        if let _ = NSImage(contentsOfFile: media.path) {
+                            if let image = NSImage(byReferencingFile: media.path) {
+                                let pasteboard = NSPasteboard.general
+                                pasteboard.clearContents()
+                                pasteboard.writeObjects([image])
+                                return
+                            }
                         }
+                        print("Failed to load image")
                     }
                     Button("削除") {
                         print("Delete button clicked for media id: \(media.id)")
